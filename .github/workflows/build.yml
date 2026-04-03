@@ -38,10 +38,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Path & tag filter
+      - name: Path filter
         id: filter
         run: |
-          # Manual dispatch — respect the dropdown choice
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             CHOICE="${{ github.event.inputs.extension }}"
             echo "profile-guardian=$([[ "$CHOICE" == "all" || "$CHOICE" == "profile-guardian" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
@@ -49,7 +48,6 @@ jobs:
             exit 0
           fi
 
-          # Branch push or PR — diff against base
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE="${{ github.event.pull_request.base.sha }}"
           elif [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
@@ -59,184 +57,36 @@ jobs:
           fi
 
           CHANGED=$(git diff --name-only "$BASE" HEAD)
-          echo "Changed files: $CHANGED"
-
+          echo "Changed: $CHANGED"
           echo "profile-guardian=$(echo "$CHANGED" | grep -q '^profile-guardian/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "trufo=$(echo "$CHANGED"            | grep -q '^trufo/'             && echo true || echo false)" >> $GITHUB_OUTPUT
 
   # ── Profile Guardian ────────────────────────────────────────────────────────
   profile-guardian:
-    name: Profile Guardian
     needs: changes
     if: needs.changes.outputs.profile-guardian == 'true'
-    runs-on: ubuntu-latest
+    uses: maimon33/infra/.github/workflows/chrome-extension-release.yml@main
+    with:
+      extension_name: "Profile Guardian"
+      extension_dir: "profile-guardian"
+      tag_prefix: "profile-guardian-v"
+      bump: ${{ github.event.inputs.bump || 'patch' }}
+      create_release: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
+    secrets: inherit
     permissions:
       contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Resolve & bump version
-        id: version
-        run: |
-          # Find latest tag for this extension
-          LATEST=$(git tag -l "profile-guardian-v*" --sort=-version:refname | head -1)
-
-          if [[ -z "$LATEST" ]]; then
-            NEW="1.0.0"
-          else
-            CURRENT="${LATEST#profile-guardian-v}"
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-            case "${{ github.event.inputs.bump || 'patch' }}" in
-              major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-              minor) MINOR=$((MINOR+1)); PATCH=0 ;;
-              *)     PATCH=$((PATCH+1)) ;;
-            esac
-            NEW="$MAJOR.$MINOR.$PATCH"
-          fi
-
-          echo "Previous tag: ${LATEST:-none}  →  New version: $NEW"
-
-          # Write version into manifest.json
-          node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('profile-guardian/manifest.json', 'utf8'));
-            m.version = '$NEW';
-            fs.writeFileSync('profile-guardian/manifest.json', JSON.stringify(m, null, 2) + '\n');
-          "
-
-          # Commit back (skip ci to avoid re-trigger)
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add profile-guardian/manifest.json
-          git diff --staged --quiet || git commit -m "chore(profile-guardian): bump version to $NEW [skip ci]"
-          git push
-
-          echo "new=$NEW"                   >> $GITHUB_OUTPUT
-          echo "tag=profile-guardian-v$NEW" >> $GITHUB_OUTPUT
-
-      - name: Install dependencies
-        working-directory: profile-guardian
-        run: npm install
-
-      - name: Generate icons
-        working-directory: profile-guardian
-        run: npm run icons
-
-      - name: Validate
-        working-directory: profile-guardian
-        run: node scripts/build.js
-
-      - name: Package zip
-        working-directory: profile-guardian
-        run: npm run zip
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: profile-guardian-extension
-          path: profile-guardian/dist/*.zip
-          retention-days: 30
-
-      - name: Create GitHub Release
-        if: github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: "Profile Guardian v${{ steps.version.outputs.new }}"
-          files: profile-guardian/dist/*.zip
-          generate_release_notes: true
 
   # ── Trufo ───────────────────────────────────────────────────────────────────
   trufo:
-    name: Trufo
     needs: changes
     if: needs.changes.outputs.trufo == 'true'
-    runs-on: ubuntu-latest
+    uses: maimon33/infra/.github/workflows/chrome-extension-release.yml@main
+    with:
+      extension_name: "Trufo"
+      extension_dir: "trufo"
+      tag_prefix: "trufo-v"
+      bump: ${{ github.event.inputs.bump || 'patch' }}
+      create_release: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
+    secrets: inherit
     permissions:
       contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Resolve & bump version
-        id: version
-        run: |
-          LATEST=$(git tag -l "trufo-v*" --sort=-version:refname | head -1)
-
-          if [[ -z "$LATEST" ]]; then
-            NEW="1.0.0"
-          else
-            CURRENT="${LATEST#trufo-v}"
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-            case "${{ github.event.inputs.bump || 'patch' }}" in
-              major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
-              minor) MINOR=$((MINOR+1)); PATCH=0 ;;
-              *)     PATCH=$((PATCH+1)) ;;
-            esac
-            NEW="$MAJOR.$MINOR.$PATCH"
-          fi
-
-          echo "Previous tag: ${LATEST:-none}  →  New version: $NEW"
-
-          node -e "
-            const fs = require('fs');
-            const m = JSON.parse(fs.readFileSync('trufo/manifest.json', 'utf8'));
-            m.version = '$NEW';
-            fs.writeFileSync('trufo/manifest.json', JSON.stringify(m, null, 2) + '\n');
-          "
-
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add trufo/manifest.json
-          git diff --staged --quiet || git commit -m "chore(trufo): bump version to $NEW [skip ci]"
-          git push
-
-          echo "new=$NEW"        >> $GITHUB_OUTPUT
-          echo "tag=trufo-v$NEW" >> $GITHUB_OUTPUT
-
-      - name: Install dependencies
-        working-directory: trufo
-        run: npm install
-
-      - name: Generate icons
-        working-directory: trufo
-        run: npm run icons
-
-      - name: Validate
-        working-directory: trufo
-        run: node scripts/build.js
-
-      - name: Package zip
-        working-directory: trufo
-        run: npm run zip
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trufo-extension
-          path: trufo/dist/*.zip
-          retention-days: 30
-
-      - name: Create GitHub Release
-        if: github.event_name != 'pull_request'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: "Trufo v${{ steps.version.outputs.new }}"
-          files: trufo/dist/*.zip
-          generate_release_notes: true
