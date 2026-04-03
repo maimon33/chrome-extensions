@@ -13,7 +13,7 @@
       <img src="../../icons/icon48.png" alt="Trufo" width="22" height="22" />
       <span>Trufo</span>
     </div>
-    <div id="auth-status" class="auth-status"></div>
+    <a href="https://trufo.maimons.dev/manage" target="_blank" class="header-link">My Secrets ↗</a>
   </header>
 
   <!-- Auth view -->
@@ -38,14 +38,36 @@
 
   <!-- Create view -->
   <div id="view-create" class="view hidden">
-    <div class="field">
-      <label for="obj-name">Name</label>
-      <input id="obj-name" type="text" placeholder="my-secret" />
+
+    <div class="field row">
+      <div class="grow">
+        <label for="obj-name">Name</label>
+        <input id="obj-name" type="text" placeholder="my-secret" />
+      </div>
+      <div class="type-col">
+        <label for="obj-type">Type</label>
+        <select id="obj-type">
+          <option value="string">String</option>
+          <option value="boolean">Boolean</option>
+          <option value="toggle">Toggle</option>
+        </select>
+      </div>
     </div>
 
-    <div class="field">
+    <!-- String content -->
+    <div id="content-string" class="field">
       <label for="obj-content">Content</label>
       <textarea id="obj-content" placeholder="Secret value…" rows="3"></textarea>
+    </div>
+
+    <!-- Boolean / Toggle content -->
+    <div id="content-bool" class="field hidden">
+      <label>Initial Value</label>
+      <div class="bool-toggle">
+        <button type="button" id="bool-false" class="bool-btn active">false</button>
+        <button type="button" id="bool-true"  class="bool-btn">true</button>
+      </div>
+      <p id="bool-hint" class="field-hint"></p>
     </div>
 
     <div class="field row">
@@ -74,18 +96,26 @@
   <!-- Result view -->
   <div id="view-result" class="view hidden">
     <div class="result-box">
-      <p class="result-label">Access URL</p>
-      <div class="result-url-row">
-        <code id="result-url"></code>
-        <button id="btn-copy" class="btn-copy" title="Copy">⧉</button>
+      <div class="result-row-label">
+        <span class="result-label">Access URL</span>
+        <button id="btn-copy-url" class="btn-copy" title="Copy URL">⧉</button>
       </div>
+      <code id="result-url" class="result-code"></code>
     </div>
+
+    <div class="result-box">
+      <div class="result-row-label">
+        <span class="result-label">curl</span>
+        <button id="btn-copy-curl" class="btn-copy" title="Copy curl">⧉</button>
+      </div>
+      <code id="result-curl" class="result-code"></code>
+    </div>
+
     <button id="btn-another" class="btn-secondary">Create Another</button>
   </div>
 
   <footer>
     <button id="btn-signout" class="btn-ghost hidden">Sign out</button>
-    <a id="link-manage" href="https://trufo.maimons.dev/manage" target="_blank" class="footer-link">Open Trufo ↗</a>
   </footer>
 
   <script src="popup.js"></script>

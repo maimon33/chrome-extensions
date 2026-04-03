@@ -45,10 +45,6 @@ function showView(id) {
   document.getElementById(id).classList.remove('hidden');
 }
 
-function setAuthStatus(text) {
-  document.getElementById('auth-status').textContent = text;
-}
-
 function showSignOut(show) {
   document.getElementById('btn-signout').classList.toggle('hidden', !show);
 }
@@ -78,13 +74,39 @@ async function apiPost(path, body) {
   return res.json();
 }
 
+// ─── Type selector ────────────────────────────────────────────────────────────
+
+const BOOL_HINTS = {
+  boolean: 'Stored as true/false. Value is fixed after creation.',
+  toggle:  'Auto-flips between true and false on every access.',
+};
+
+let boolValue = 'false';
+
+document.getElementById('obj-type').addEventListener('change', function () {
+  const type = this.value;
+  const isString = type === 'string';
+  document.getElementById('content-string').classList.toggle('hidden', !isString);
+  document.getElementById('content-bool').classList.toggle('hidden', isString);
+  document.getElementById('bool-hint').textContent = isString ? '' : BOOL_HINTS[type];
+});
+
+document.getElementById('bool-false').addEventListener('click', () => setBoolValue('false'));
+document.getElementById('bool-true').addEventListener('click',  () => setBoolValue('true'));
+
+function setBoolValue(val) {
+  boolValue = val;
+  document.getElementById('bool-false').classList.toggle('active', val === 'false');
+  document.getElementById('bool-true').classList.toggle('active',  val === 'true');
+}
+
+// ─── Auth flow ────────────────────────────────────────────────────────────────
+
 function showCodeSection(email) {
   document.getElementById('auth-email').value = email;
   document.getElementById('code-section').classList.remove('hidden');
   document.getElementById('auth-code').focus();
 }
-
-// ─── Auth flow ────────────────────────────────────────────────────────────────
 
 document.getElementById('btn-send-code').addEventListener('click', async () => {
   clearError('auth-error');
@@ -141,7 +163,6 @@ document.getElementById('btn-verify').addEventListener('click', async () => {
 // ─── Create flow ──────────────────────────────────────────────────────────────
 
 function enterCreateView(email) {
-  setAuthStatus(email);
   showSignOut(true);
   showView('view-create');
   document.getElementById('obj-name').focus();
@@ -158,12 +179,16 @@ document.getElementById('btn-create').addEventListener('click', async () => {
   }
 
   const name = document.getElementById('obj-name').value.trim();
-  const content = document.getElementById('obj-content').value.trim();
-  const ttlHours = parseFloat(document.getElementById('obj-ttl').value);
+  const type = document.getElementById('obj-type').value;
   const oneTimeAccess = document.getElementById('obj-onetime').checked;
+  const ttlHours = parseFloat(document.getElementById('obj-ttl').value);
+
+  const content = type === 'string'
+    ? document.getElementById('obj-content').value.trim()
+    : boolValue;
 
   if (!name) return showError('create-error', 'Name is required.');
-  if (!content) return showError('create-error', 'Content is required.');
+  if (type === 'string' && !content) return showError('create-error', 'Content is required.');
 
   const btn = document.getElementById('btn-create');
   btn.disabled = true;
@@ -172,8 +197,8 @@ document.getElementById('btn-create').addEventListener('click', async () => {
   try {
     const data = await apiPost('/api/objects', {
       name,
-      type: 'string',
-      pathType: 'string',
+      type,
+      pathType: type,
       content,
       ttlHours,
       oneTimeAccess,
@@ -185,9 +210,14 @@ document.getElementById('btn-create').addEventListener('click', async () => {
       showError('create-error', data.error);
     } else {
       const token = data.object?.token;
-      const accessUrl = `${API}/access/${name}?token=${token}`;
-      document.getElementById('result-url').textContent = accessUrl;
-      document.getElementById('result-url').dataset.url = accessUrl;
+      const secret = data.userSecret || auth.secret;
+      const accessUrl  = `${API}/access/${token}?secret=${secret}`;
+      const curlCmd    = `curl "${API}/api/access/${token}?secret=${secret}&raw=true"`;
+
+      document.getElementById('result-url').textContent  = accessUrl;
+      document.getElementById('result-url').dataset.val  = accessUrl;
+      document.getElementById('result-curl').textContent = curlCmd;
+      document.getElementById('result-curl').dataset.val = curlCmd;
       showView('view-result');
     }
   } catch {
@@ -198,34 +228,41 @@ document.getElementById('btn-create').addEventListener('click', async () => {
   }
 });
 
-// ─── Result view ──────────────────────────────────────────────────────────────
+// ─── Copy buttons ─────────────────────────────────────────────────────────────
 
-document.getElementById('btn-copy').addEventListener('click', async () => {
-  const url = document.getElementById('result-url').dataset.url;
-  const btn = document.getElementById('btn-copy');
-  try {
-    await navigator.clipboard.writeText(url);
+function makeCopyButton(btnId, sourceId) {
+  document.getElementById(btnId).addEventListener('click', async () => {
+    const text = document.getElementById(sourceId).dataset.val;
+    const btn  = document.getElementById(btnId);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     btn.textContent = '✓';
     btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = '⧉';
-      btn.classList.remove('copied');
-    }, 2000);
-  } catch {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = url;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-});
+    setTimeout(() => { btn.textContent = '⧉'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+makeCopyButton('btn-copy-url',  'result-url');
+makeCopyButton('btn-copy-curl', 'result-curl');
+
+// ─── Create another ───────────────────────────────────────────────────────────
 
 document.getElementById('btn-another').addEventListener('click', () => {
   document.getElementById('obj-name').value = '';
   document.getElementById('obj-content').value = '';
   document.getElementById('obj-onetime').checked = false;
+  document.getElementById('obj-type').value = 'string';
+  document.getElementById('content-string').classList.remove('hidden');
+  document.getElementById('content-bool').classList.add('hidden');
+  setBoolValue('false');
   clearError('create-error');
   showView('view-create');
   document.getElementById('obj-name').focus();
@@ -236,7 +273,6 @@ document.getElementById('btn-another').addEventListener('click', () => {
 document.getElementById('btn-signout').addEventListener('click', async () => {
   await clearAuth();
   await clearPendingEmail();
-  setAuthStatus('');
   showSignOut(false);
   document.getElementById('auth-email').value = '';
   document.getElementById('auth-code').value = '';
