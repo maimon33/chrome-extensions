@@ -12,7 +12,7 @@ on:
           - profile-guardian
           - trufo
       bump:
-        description: 'Version bump (manual dispatch only)'
+        description: 'Version bump'
         required: true
         type: choice
         default: patch
@@ -22,9 +22,6 @@ on:
           - major
   push:
     branches: [main]
-    tags:
-      - 'profile-guardian-v*'
-      - 'trufo-v*'
   pull_request:
     branches: [main]
 
@@ -49,18 +46,6 @@ jobs:
             CHOICE="${{ github.event.inputs.extension }}"
             echo "profile-guardian=$([[ "$CHOICE" == "all" || "$CHOICE" == "profile-guardian" ]] && echo true || echo false)" >> $GITHUB_OUTPUT
             echo "trufo=$([[ "$CHOICE" == "all" || "$CHOICE" == "trufo" ]] && echo true || echo false)"                       >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Tag push
-          if [[ "${GITHUB_REF}" == refs/tags/profile-guardian-v* ]]; then
-            echo "profile-guardian=true" >> $GITHUB_OUTPUT
-            echo "trufo=false"            >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          if [[ "${GITHUB_REF}" == refs/tags/trufo-v* ]]; then
-            echo "profile-guardian=false" >> $GITHUB_OUTPUT
-            echo "trufo=true"             >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -98,44 +83,44 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Resolve version
+      - name: Resolve & bump version
         id: version
-        working-directory: profile-guardian
         run: |
-          CURRENT=$(node -p "require('./manifest.json').version")
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          # Find latest tag for this extension
+          LATEST=$(git tag -l "profile-guardian-v*" --sort=-version:refname | head -1)
 
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            case "${{ github.event.inputs.bump }}" in
+          if [[ -z "$LATEST" ]]; then
+            NEW="1.0.0"
+          else
+            CURRENT="${LATEST#profile-guardian-v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            case "${{ github.event.inputs.bump || 'patch' }}" in
               major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
               minor) MINOR=$((MINOR+1)); PATCH=0 ;;
               *)     PATCH=$((PATCH+1)) ;;
             esac
             NEW="$MAJOR.$MINOR.$PATCH"
-
-            # Write bumped version back into manifest.json
-            node -e "
-              const fs = require('fs');
-              const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-              m.version = '$NEW';
-              fs.writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
-            "
-
-            # Commit the bump back to main [skip ci] avoids re-triggering
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add manifest.json
-            git commit -m "chore(profile-guardian): bump version to $NEW [skip ci]"
-            git push
-
-          elif [[ "${GITHUB_REF}" == refs/tags/profile-guardian-v* ]]; then
-            NEW="${GITHUB_REF#refs/tags/profile-guardian-v}"
-          else
-            NEW="$CURRENT"
           fi
 
-          echo "new=$NEW"                     >> $GITHUB_OUTPUT
-          echo "tag=profile-guardian-v$NEW"   >> $GITHUB_OUTPUT
+          echo "Previous tag: ${LATEST:-none}  →  New version: $NEW"
+
+          # Write version into manifest.json
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('profile-guardian/manifest.json', 'utf8'));
+            m.version = '$NEW';
+            fs.writeFileSync('profile-guardian/manifest.json', JSON.stringify(m, null, 2) + '\n');
+          "
+
+          # Commit back (skip ci to avoid re-trigger)
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add profile-guardian/manifest.json
+          git diff --staged --quiet || git commit -m "chore(profile-guardian): bump version to $NEW [skip ci]"
+          git push
+
+          echo "new=$NEW"                   >> $GITHUB_OUTPUT
+          echo "tag=profile-guardian-v$NEW" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         working-directory: profile-guardian
@@ -161,9 +146,7 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          startsWith(github.ref, 'refs/tags/profile-guardian-v')
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -171,7 +154,7 @@ jobs:
           files: profile-guardian/dist/*.zip
           generate_release_notes: true
 
-  # ── Trufo ────────────────────────────────────────────────────────────────
+  # ── Trufo ───────────────────────────────────────────────────────────────────
   trufo:
     name: Trufo
     needs: changes
@@ -190,42 +173,41 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Resolve version
+      - name: Resolve & bump version
         id: version
-        working-directory: trufo
         run: |
-          CURRENT=$(node -p "require('./manifest.json').version")
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          LATEST=$(git tag -l "trufo-v*" --sort=-version:refname | head -1)
 
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            case "${{ github.event.inputs.bump }}" in
+          if [[ -z "$LATEST" ]]; then
+            NEW="1.0.0"
+          else
+            CURRENT="${LATEST#trufo-v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            case "${{ github.event.inputs.bump || 'patch' }}" in
               major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
               minor) MINOR=$((MINOR+1)); PATCH=0 ;;
               *)     PATCH=$((PATCH+1)) ;;
             esac
             NEW="$MAJOR.$MINOR.$PATCH"
-
-            node -e "
-              const fs = require('fs');
-              const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-              m.version = '$NEW';
-              fs.writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
-            "
-
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add manifest.json
-            git commit -m "chore(trufo): bump version to $NEW [skip ci]"
-            git push
-
-          elif [[ "${GITHUB_REF}" == refs/tags/trufo-v* ]]; then
-            NEW="${GITHUB_REF#refs/tags/trufo-v}"
-          else
-            NEW="$CURRENT"
           fi
 
-          echo "new=$NEW"           >> $GITHUB_OUTPUT
-          echo "tag=trufo-v$NEW"    >> $GITHUB_OUTPUT
+          echo "Previous tag: ${LATEST:-none}  →  New version: $NEW"
+
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('trufo/manifest.json', 'utf8'));
+            m.version = '$NEW';
+            fs.writeFileSync('trufo/manifest.json', JSON.stringify(m, null, 2) + '\n');
+          "
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add trufo/manifest.json
+          git diff --staged --quiet || git commit -m "chore(trufo): bump version to $NEW [skip ci]"
+          git push
+
+          echo "new=$NEW"        >> $GITHUB_OUTPUT
+          echo "tag=trufo-v$NEW" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         working-directory: trufo
@@ -251,9 +233,7 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: >
-          github.event_name == 'workflow_dispatch' ||
-          startsWith(github.ref, 'refs/tags/trufo-v')
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
