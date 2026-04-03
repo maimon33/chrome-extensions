@@ -25,6 +25,19 @@ async function clearAuth() {
   await chrome.storage.local.remove(['trufo_email', 'trufo_secret', 'trufo_expiry']);
 }
 
+async function savePendingEmail(email) {
+  await chrome.storage.local.set({ trufo_pending_email: email });
+}
+
+async function getPendingEmail() {
+  const data = await chrome.storage.local.get('trufo_pending_email');
+  return data.trufo_pending_email || null;
+}
+
+async function clearPendingEmail() {
+  await chrome.storage.local.remove('trufo_pending_email');
+}
+
 // ─── View switching ───────────────────────────────────────────────────────────
 
 function showView(id) {
@@ -65,6 +78,12 @@ async function apiPost(path, body) {
   return res.json();
 }
 
+function showCodeSection(email) {
+  document.getElementById('auth-email').value = email;
+  document.getElementById('code-section').classList.remove('hidden');
+  document.getElementById('auth-code').focus();
+}
+
 // ─── Auth flow ────────────────────────────────────────────────────────────────
 
 document.getElementById('btn-send-code').addEventListener('click', async () => {
@@ -81,8 +100,8 @@ document.getElementById('btn-send-code').addEventListener('click', async () => {
     if (data.error) {
       showError('auth-error', data.error);
     } else {
-      document.getElementById('code-section').classList.remove('hidden');
-      document.getElementById('auth-code').focus();
+      await savePendingEmail(email);
+      showCodeSection(email);
     }
   } catch {
     showError('auth-error', 'Network error. Check your connection.');
@@ -108,6 +127,7 @@ document.getElementById('btn-verify').addEventListener('click', async () => {
       showError('auth-error', data.error || 'Verification failed.');
     } else {
       await saveAuth(email, data.userSecret);
+      await clearPendingEmail();
       enterCreateView(email);
     }
   } catch {
@@ -215,6 +235,7 @@ document.getElementById('btn-another').addEventListener('click', () => {
 
 document.getElementById('btn-signout').addEventListener('click', async () => {
   await clearAuth();
+  await clearPendingEmail();
   setAuthStatus('');
   showSignOut(false);
   document.getElementById('auth-email').value = '';
@@ -230,7 +251,15 @@ document.getElementById('btn-signout').addEventListener('click', async () => {
   const auth = await getAuth();
   if (auth) {
     enterCreateView(auth.email);
-  } else {
-    showView('view-auth');
+    return;
   }
+
+  const pendingEmail = await getPendingEmail();
+  if (pendingEmail) {
+    showView('view-auth');
+    showCodeSection(pendingEmail);
+    return;
+  }
+
+  showView('view-auth');
 })();
