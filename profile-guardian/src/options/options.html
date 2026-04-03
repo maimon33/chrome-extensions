@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile Guardian — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img src="../../icons/icon48.png" alt="Shield" width="32" height="32" />
+      <h1>Profile Guardian</h1>
+    </header>
+
+    <!-- Tab nav -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="history">History</button>
+      <button class="tab" data-tab="extensions">Extensions</button>
+      <button class="tab" data-tab="whitelist">Whitelist</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <!-- History tab -->
+    <section id="tab-history" class="tab-panel active">
+      <div class="panel-header">
+        <h2>Blocked Requests</h2>
+        <div class="panel-actions">
+          <select id="filter-permission">
+            <option value="">All types</option>
+            <option value="notifications">Notifications</option>
+            <option value="geolocation">Geolocation</option>
+            <option value="camera">Camera</option>
+            <option value="microphone">Microphone</option>
+            <option value="push">Push</option>
+          </select>
+          <button id="btn-clear" class="btn-danger btn-sm">Clear All</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="history-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Domain</th>
+              <th>Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="4" class="empty">No blocked requests yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Extensions tab -->
+    <section id="tab-extensions" class="tab-panel">
+      <div class="panel-header">
+        <h2>Detected Extensions</h2>
+        <p class="hint">Extensions installed while Profile Guardian was active.</p>
+      </div>
+      <ul id="ext-list">
+        <li class="empty">No new extensions detected.</li>
+      </ul>
+    </section>
+
+    <!-- Whitelist tab -->
+    <section id="tab-whitelist" class="tab-panel">
+      <div class="panel-header">
+        <h2>Trusted Domains</h2>
+        <p class="hint">Permission requests from these domains are silently allowed.</p>
+      </div>
+      <form id="whitelist-form" class="add-form">
+        <input id="whitelist-input" type="text" placeholder="example.com" />
+        <button type="submit" class="btn-primary btn-sm">Add</button>
+      </form>
+      <ul id="whitelist-list">
+        <li class="empty">No trusted domains yet.</li>
+      </ul>
+    </section>
+
+    <!-- Settings tab -->
+    <section id="tab-settings" class="tab-panel">
+      <h2>Settings</h2>
+
+      <fieldset class="setting-group">
+        <legend>Block Permission Types</legend>
+        <label class="toggle-row">
+          <span>Notification requests</span>
+          <input type="checkbox" id="s-notifications" />
+        </label>
+        <label class="toggle-row">
+          <span>Geolocation requests</span>
+          <input type="checkbox" id="s-geolocation" />
+        </label>
+        <label class="toggle-row">
+          <span>Camera requests</span>
+          <input type="checkbox" id="s-camera" />
+        </label>
+        <label class="toggle-row">
+          <span>Microphone requests</span>
+          <input type="checkbox" id="s-microphone" />
+        </label>
+        <label class="toggle-row">
+          <span>Push subscription requests</span>
+          <input type="checkbox" id="s-push" />
+        </label>
+      </fieldset>
+
+      <fieldset class="setting-group">
+        <legend>Extension Monitoring</legend>
+        <label class="toggle-row">
+          <span>Alert when new extensions are installed</span>
+          <input type="checkbox" id="s-trackExt" />
+        </label>
+      </fieldset>
+
+      <fieldset class="setting-group">
+        <legend>Weekly Summary</legend>
+        <label class="toggle-row">
+          <span>Send weekly digest notification</span>
+          <input type="checkbox" id="s-weeklySummary" />
+        </label>
+        <label class="toggle-row">
+          <span>Day of week</span>
+          <select id="s-summaryDay">
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <button id="btn-save-settings" class="btn-primary">Save Settings</button>
+      <span id="save-status" class="save-status"></span>
+    </section>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

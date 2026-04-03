@@ -1,0 +1,19 @@
+{
+  "name": "profile-guardian",
+  "version": "1.0.0",
+  "description": "Chrome extension that blocks permission requests and protects the Chrome profile for novice users.",
+  "private": true,
+  "scripts": {
+    "icons": "node scripts/generate-icons.js",
+    "build": "npm run icons && node scripts/build.js",
+    "zip": "node scripts/zip.js",
+    "release": "npm run build && npm run zip"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0",
+    "archiver": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
