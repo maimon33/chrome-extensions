@@ -11,6 +11,15 @@ on:
           - all
           - profile-guardian
           - trufo
+      bump:
+        description: 'Version bump (manual dispatch only)'
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
   push:
     branches: [main]
     tags:
@@ -20,7 +29,7 @@ on:
     branches: [main]
 
 jobs:
-  # Detect which extensions have changed (or which tag was pushed)
+  # ── Detect which extensions to build ───────────────────────────────────────
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
@@ -31,6 +40,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Path & tag filter
         id: filter
         run: |
@@ -69,6 +79,7 @@ jobs:
           echo "profile-guardian=$(echo "$CHANGED" | grep -q '^profile-guardian/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "trufo=$(echo "$CHANGED"            | grep -q '^trufo/'             && echo true || echo false)" >> $GITHUB_OUTPUT
 
+  # ── Profile Guardian ────────────────────────────────────────────────────────
   profile-guardian:
     name: Profile Guardian
     needs: changes
@@ -79,10 +90,52 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Resolve version
+        id: version
+        working-directory: profile-guardian
+        run: |
+          CURRENT=$(node -p "require('./manifest.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            case "${{ github.event.inputs.bump }}" in
+              major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+              *)     PATCH=$((PATCH+1)) ;;
+            esac
+            NEW="$MAJOR.$MINOR.$PATCH"
+
+            # Write bumped version back into manifest.json
+            node -e "
+              const fs = require('fs');
+              const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+              m.version = '$NEW';
+              fs.writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
+            "
+
+            # Commit the bump back to main [skip ci] avoids re-triggering
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add manifest.json
+            git commit -m "chore(profile-guardian): bump version to $NEW [skip ci]"
+            git push
+
+          elif [[ "${GITHUB_REF}" == refs/tags/profile-guardian-v* ]]; then
+            NEW="${GITHUB_REF#refs/tags/profile-guardian-v}"
+          else
+            NEW="$CURRENT"
+          fi
+
+          echo "new=$NEW"                     >> $GITHUB_OUTPUT
+          echo "tag=profile-guardian-v$NEW"   >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         working-directory: profile-guardian
@@ -108,13 +161,17 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/profile-guardian-v')
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          startsWith(github.ref, 'refs/tags/profile-guardian-v')
         uses: softprops/action-gh-release@v2
         with:
-          name: "Profile Guardian ${{ github.ref_name }}"
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Profile Guardian v${{ steps.version.outputs.new }}"
           files: profile-guardian/dist/*.zip
           generate_release_notes: true
 
+  # ── Trufo ────────────────────────────────────────────────────────────────
   trufo:
     name: Trufo
     needs: changes
@@ -125,10 +182,50 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Resolve version
+        id: version
+        working-directory: trufo
+        run: |
+          CURRENT=$(node -p "require('./manifest.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            case "${{ github.event.inputs.bump }}" in
+              major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+              *)     PATCH=$((PATCH+1)) ;;
+            esac
+            NEW="$MAJOR.$MINOR.$PATCH"
+
+            node -e "
+              const fs = require('fs');
+              const m = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+              m.version = '$NEW';
+              fs.writeFileSync('manifest.json', JSON.stringify(m, null, 2) + '\n');
+            "
+
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add manifest.json
+            git commit -m "chore(trufo): bump version to $NEW [skip ci]"
+            git push
+
+          elif [[ "${GITHUB_REF}" == refs/tags/trufo-v* ]]; then
+            NEW="${GITHUB_REF#refs/tags/trufo-v}"
+          else
+            NEW="$CURRENT"
+          fi
+
+          echo "new=$NEW"           >> $GITHUB_OUTPUT
+          echo "tag=trufo-v$NEW"    >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         working-directory: trufo
@@ -154,9 +251,12 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/trufo-v')
+        if: >
+          github.event_name == 'workflow_dispatch' ||
+          startsWith(github.ref, 'refs/tags/trufo-v')
         uses: softprops/action-gh-release@v2
         with:
-          name: "Trufo ${{ github.ref_name }}"
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Trufo v${{ steps.version.outputs.new }}"
           files: trufo/dist/*.zip
           generate_release_notes: true
