@@ -19,6 +19,8 @@ jobs:
       trufo: ${{ steps.filter.outputs.trufo }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Path & tag filter
         id: filter
         run: |
