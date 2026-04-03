@@ -1,17 +1,23 @@
-name: Profile Guardian — Build & Release
+name: Chrome Extensions — Build & Release
 
 on:
   push:
     branches: [main]
-    tags: ['profile-guardian-v*']
-    paths: ['profile-guardian/**']
+    tags:
+      - 'profile-guardian-v*'
+      - 'trufo-v*'
+    paths:
+      - 'profile-guardian/**'
+      - 'trufo/**'
   pull_request:
     branches: [main]
-    paths: ['profile-guardian/**']
+    paths:
+      - 'profile-guardian/**'
+      - 'trufo/**'
 
 jobs:
-  build:
-    name: Build
+  profile-guardian:
+    name: Profile Guardian
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,7 +47,6 @@ jobs:
         working-directory: profile-guardian
         run: npm run zip
 
-      # Always upload as a downloadable artifact (available on every run)
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -49,11 +54,56 @@ jobs:
           path: profile-guardian/dist/*.zip
           retention-days: 30
 
-      # On tagged release (profile-guardian-v*), publish to GitHub Releases
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/profile-guardian-v')
         uses: softprops/action-gh-release@v2
         with:
           name: "Profile Guardian ${{ github.ref_name }}"
           files: profile-guardian/dist/*.zip
+          generate_release_notes: true
+
+  trufo:
+    name: Trufo
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: trufo
+        run: npm install
+
+      - name: Generate icons
+        working-directory: trufo
+        run: npm run icons
+
+      - name: Validate extension
+        working-directory: trufo
+        run: node scripts/build.js
+
+      - name: Package zip
+        working-directory: trufo
+        run: npm run zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trufo-extension
+          path: trufo/dist/*.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/trufo-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Trufo ${{ github.ref_name }}"
+          files: trufo/dist/*.zip
           generate_release_notes: true

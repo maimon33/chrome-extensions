@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trufo</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <header>
+    <div class="logo">
+      <img src="../../icons/icon48.png" alt="Trufo" width="22" height="22" />
+      <span>Trufo</span>
+    </div>
+    <div id="auth-status" class="auth-status"></div>
+  </header>
+
+  <!-- Auth view -->
+  <div id="view-auth" class="view">
+    <p class="hint">Sign in with your email to create secrets.</p>
+
+    <div class="field">
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email" />
+    </div>
+
+    <button id="btn-send-code" class="btn-primary">Send Code</button>
+
+    <div id="code-section" class="field hidden">
+      <label for="auth-code">Verification Code</label>
+      <input id="auth-code" type="text" placeholder="123456" maxlength="6" inputmode="numeric" />
+      <button id="btn-verify" class="btn-primary" style="margin-top: 0.5rem;">Verify</button>
+    </div>
+
+    <div id="auth-error" class="error hidden"></div>
+  </div>
+
+  <!-- Create view -->
+  <div id="view-create" class="view hidden">
+    <div class="field">
+      <label for="obj-name">Name</label>
+      <input id="obj-name" type="text" placeholder="my-secret" />
+    </div>
+
+    <div class="field">
+      <label for="obj-content">Content</label>
+      <textarea id="obj-content" placeholder="Secret value…" rows="3"></textarea>
+    </div>
+
+    <div class="field row">
+      <div class="grow">
+        <label for="obj-ttl">Expires in</label>
+        <select id="obj-ttl">
+          <option value="1">1 hour</option>
+          <option value="6">6 hours</option>
+          <option value="24" selected>1 day</option>
+          <option value="168">7 days</option>
+          <option value="720">30 days</option>
+        </select>
+      </div>
+      <div>
+        <label class="checkbox-label">
+          <input id="obj-onetime" type="checkbox" />
+          One-time
+        </label>
+      </div>
+    </div>
+
+    <button id="btn-create" class="btn-primary">Create Secret</button>
+    <div id="create-error" class="error hidden"></div>
+  </div>
+
+  <!-- Result view -->
+  <div id="view-result" class="view hidden">
+    <div class="result-box">
+      <p class="result-label">Access URL</p>
+      <div class="result-url-row">
+        <code id="result-url"></code>
+        <button id="btn-copy" class="btn-copy" title="Copy">⧉</button>
+      </div>
+    </div>
+    <button id="btn-another" class="btn-secondary">Create Another</button>
+  </div>
+
+  <footer>
+    <button id="btn-signout" class="btn-ghost hidden">Sign out</button>
+    <a id="link-manage" href="https://trufo.maimons.dev/manage" target="_blank" class="footer-link">Open Trufo ↗</a>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

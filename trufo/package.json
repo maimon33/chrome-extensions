@@ -1,0 +1,19 @@
+{
+  "name": "trufo-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for Trufo — create encrypted secrets from any tab.",
+  "private": true,
+  "scripts": {
+    "icons": "node scripts/generate-icons.js",
+    "build": "npm run icons && node scripts/build.js",
+    "zip": "node scripts/zip.js",
+    "release": "npm run build && npm run zip"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0",
+    "archiver": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
