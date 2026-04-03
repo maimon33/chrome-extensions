@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -55,5 +57,3 @@ jobs:
           name: "Profile Guardian ${{ github.ref_name }}"
           files: profile-guardian/dist/*.zip
           generate_release_notes: true
-        permissions:
-          contents: write
