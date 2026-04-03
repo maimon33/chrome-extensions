@@ -3,8 +3,12 @@
   "name": "Trufo",
   "version": "1.0.0",
   "description": "Quickly create and share encrypted secrets via Trufo — directly from your browser.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://trufo.maimons.dev/*"],
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://trufo.maimons.dev/*"
+  ],
   "action": {
     "default_popup": "src/popup/popup.html",
     "default_icon": {
