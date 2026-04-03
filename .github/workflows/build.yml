@@ -6,28 +6,49 @@ on:
     tags:
       - 'profile-guardian-v*'
       - 'trufo-v*'
-    paths:
-      - 'profile-guardian/**'
-      - 'trufo/**'
   pull_request:
     branches: [main]
-    paths:
-      - 'profile-guardian/**'
-      - 'trufo/**'
 
 jobs:
+  # Detect which extensions have changed (or which tag was pushed)
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      profile-guardian: ${{ steps.filter.outputs.profile-guardian }}
+      trufo: ${{ steps.filter.outputs.trufo }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Path & tag filter
+        id: filter
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/profile-guardian-v* ]]; then
+            echo "profile-guardian=true" >> $GITHUB_OUTPUT
+            echo "trufo=false" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == refs/tags/trufo-v* ]]; then
+            echo "profile-guardian=false" >> $GITHUB_OUTPUT
+            echo "trufo=true" >> $GITHUB_OUTPUT
+          else
+            # Check changed files for branch pushes / PRs
+            git fetch origin main --depth=1 2>/dev/null || true
+            BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}"
+            CHANGED=$(git diff --name-only "$BASE" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+            echo "profile-guardian=$(echo "$CHANGED" | grep -q '^profile-guardian/' && echo true || echo false)" >> $GITHUB_OUTPUT
+            echo "trufo=$(echo "$CHANGED" | grep -q '^trufo/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          fi
+
   profile-guardian:
     name: Profile Guardian
+    needs: changes
+    if: needs.changes.outputs.profile-guardian == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -39,7 +60,7 @@ jobs:
         working-directory: profile-guardian
         run: npm run icons
 
-      - name: Validate extension
+      - name: Validate
         working-directory: profile-guardian
         run: node scripts/build.js
 
@@ -64,16 +85,16 @@ jobs:
 
   trufo:
     name: Trufo
+    needs: changes
+    if: needs.changes.outputs.trufo == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -85,7 +106,7 @@ jobs:
         working-directory: trufo
         run: npm run icons
 
-      - name: Validate extension
+      - name: Validate
         working-directory: trufo
         run: node scripts/build.js
 
