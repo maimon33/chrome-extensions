@@ -21,29 +21,29 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: chrome-extensions/profile-guardian/package-lock.json
+          cache-dependency-path: profile-guardian/package-lock.json
 
       - name: Install dependencies
-        working-directory: chrome-extensions/profile-guardian
+        working-directory: profile-guardian
         run: npm ci
 
       - name: Generate icons
-        working-directory: chrome-extensions/profile-guardian
+        working-directory: profile-guardian
         run: npm run icons
 
       - name: Validate extension
-        working-directory: chrome-extensions/profile-guardian
+        working-directory: profile-guardian
         run: node scripts/build.js
 
       - name: Package zip
-        working-directory: chrome-extensions/profile-guardian
+        working-directory: profile-guardian
         run: npm run zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: profile-guardian-extension
-          path: chrome-extensions/profile-guardian/dist/*.zip
+          path: profile-guardian/dist/*.zip
           retention-days: 30
 
   # On tagged releases, create a GitHub Release with the zip attached
