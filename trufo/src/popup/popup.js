@@ -87,7 +87,7 @@ const BOOL_HINTS = {
   toggle:  'Auto-flips between true and false on every access.',
 };
 
-let boolValue = 'false';
+let boolValue = 'true';
 
 document.getElementById('obj-type').addEventListener('change', function () {
   const type = this.value;
@@ -272,7 +272,7 @@ document.getElementById('btn-another').addEventListener('click', () => {
   document.getElementById('obj-type').value = 'string';
   document.getElementById('content-string').classList.remove('hidden');
   document.getElementById('content-bool').classList.add('hidden');
-  setBoolValue('false');
+  setBoolValue('true');
   clearError('create-error');
   showView('view-create');
   document.getElementById('obj-name').focus();
