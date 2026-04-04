@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trufo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Quickly create and share encrypted secrets via Trufo — directly from your browser.",
   "permissions": [
     "storage"
