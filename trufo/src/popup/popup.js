@@ -71,7 +71,13 @@ async function apiPost(path, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return res.json();
+  const data = await res.json();
+  // API Gateway can return the Lambda proxy envelope instead of the body directly.
+  // Detect and unwrap: {statusCode, headers, body: '<json string>'}
+  if (data && typeof data.body === 'string' && (data.statusCode !== undefined || data.headers)) {
+    try { return JSON.parse(data.body); } catch {}
+  }
+  return data;
 }
 
 // ─── Type selector ────────────────────────────────────────────────────────────
@@ -210,9 +216,13 @@ document.getElementById('btn-create').addEventListener('click', async () => {
       showError('create-error', data.error);
     } else {
       const token = data.object?.token;
-      const secret = data.userSecret || auth.secret;
-      const accessUrl  = `${API}/access/${token}?secret=${secret}`;
-      const curlCmd    = `curl "${API}/api/access/${token}?secret=${secret}&raw=true"`;
+      const accessSecret = data.object?.accessSecret;
+      if (!token || !accessSecret) {
+        showError('create-error', 'Unexpected response from server. Object may have been created — check My Secrets.');
+        return;
+      }
+      const accessUrl  = `${API}/access/${token}?secret=${accessSecret}`;
+      const curlCmd    = `curl "${API}/api/access/${token}?secret=${accessSecret}&raw=true"`;
 
       document.getElementById('result-url').textContent  = accessUrl;
       document.getElementById('result-url').dataset.val  = accessUrl;
